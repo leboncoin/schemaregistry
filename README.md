@@ -1,4 +1,5 @@
 [![license](http://img.shields.io/badge/license-Apache%20v2-orange.svg)](https://raw.githubusercontent.com/Peltoche/ical-rs/master/LICENSE)
+[![Build Status](https://travis-ci.org/leboncoin/schema-registry.svg?branch=master)](https://travis-ci.org/leboncoin/schema-registry)
 [![codecov](https://codecov.io/gh/leboncoin/schema-registry/branch/master/graph/badge.svg)](https://codecov.io/gh/leboncoin/schema-registry)
 
 # Go client for Schema Registry
