@@ -151,3 +151,41 @@ func (c *Client) Versions(ctx context.Context, subject string) (versions []int, 
 
 	return resBody, nil
 }
+
+// DeleteSubject deletes the specified subject and its associated compatibility level if registered.
+// It is recommended to use this API only when a topic needs to be recycled or in development environment.
+// Returns the versions of the schema deleted under this subject.
+//
+// https://docs.confluent.io/current/schema-registry/docs/api.html#delete--subjects-(string-%20subject)
+func (c *Client) DeleteSubject(ctx context.Context, subject string) (versions []int, err error) {
+	type responseBody []int
+
+	path, err := url.Parse(fmt.Sprintf("subjects/%s", subject))
+	if err != nil {
+		return nil, err
+	}
+
+	// nolint
+	// The request is always valid
+	req, _ := http.NewRequest("DELETE", c.baseURL.ResolveReference(path).String(), nil)
+	req.Header.Add("Accept", "application/json")
+
+	res, err := c.client.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	err = parseResponseError(req, res)
+	if err != nil {
+		return nil, err
+	}
+
+	var resBody responseBody
+	err = json.NewDecoder(res.Body).Decode(&resBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return resBody, nil
+}
