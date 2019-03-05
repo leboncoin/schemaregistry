@@ -4,12 +4,24 @@ go:
   - 1.11.x
   - 1.12.x
 
+env:
+  global:
+    # Enable the "go mod" feature
+    - GO111MODULE: "on"
+
+cache:
+  directories:
+    - $HOME/gopath/pkg/mod
+    - $HOME/gopath/pkg/mod
+
 install:
   - go get -v ./...
+  - go install github.com/golangci/golangci-lint/cmd/golangci-lint
 
 script:
   - go test -v -race -timeout=1m ./...
   - go test -v -timeout=1m -cover -coverprofile=coverage.out ./...
+  - golangci-lint run ./...
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
