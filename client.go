@@ -116,7 +116,7 @@ func (c *Client) Versions(ctx context.Context, subject string) (versions []int, 
 func (c *Client) DeleteSubject(ctx context.Context, subject string) (versions []int, err error) {
 	type responseBody []int
 
-	rawBody, err := c.execRequest(ctx, "GET", fmt.Sprintf("subjects/%s", subject), nil)
+	rawBody, err := c.execRequest(ctx, "DELETE", fmt.Sprintf("subjects/%s", subject), nil)
 	if err != nil {
 		return nil, err
 	}

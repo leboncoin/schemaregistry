@@ -33,6 +33,7 @@ func Test_NewClient_with_a_custom_client(t *testing.T) {
 
 func Test_GetSchemaByID_success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, "/schemas/ids/42", r.URL.String())
 
 		w.WriteHeader(http.StatusOK)
@@ -99,6 +100,7 @@ func Test_GetSchemaByID_with_an_invalid_json_as_response(t *testing.T) {
 
 func Test_Subjects_success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, "/subjects", r.URL.String())
 
 		w.WriteHeader(http.StatusOK)
@@ -165,6 +167,7 @@ func Test_Subjects_with_an_invalid_json_as_response(t *testing.T) {
 
 func Test_Versions_success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, "/subjects/foobar/versions", r.URL.String())
 
 		w.WriteHeader(http.StatusOK)
@@ -236,5 +239,62 @@ func Test_Versions_with_an_invalid_json_as_response(t *testing.T) {
 	subject, err := client.Versions(context.Background(), "foobar")
 
 	assert.Empty(t, subject)
+	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
+}
+
+func Test_DeleteSubject_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "DELETE", r.Method)
+		assert.Equal(t, "/subjects/foobar", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`[1, 2, 3, 4]`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	versions, err := client.DeleteSubject(context.Background(), "foobar")
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, []int{1, 2, 3, 4}, versions)
+}
+
+func Test_DeleteSubject_with_an_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, err := w.Write([]byte(`{
+			"error_code": 404,
+			"message": "subject not found"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	versions, err := client.DeleteSubject(context.Background(), "foobar")
+
+	assert.Empty(t, versions)
+	assert.EqualError(t, err, fmt.Sprintf("client: (DELETE: %s/subjects/foobar) failed with error code 404: subject not found", ts.URL))
+}
+
+func Test_DeleteSubject_with_an_invalid_json_as_response(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`not a valid json`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	versions, err := client.DeleteSubject(context.Background(), "foobar")
+
+	assert.Empty(t, versions)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
 }
