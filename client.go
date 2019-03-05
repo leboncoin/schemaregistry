@@ -59,7 +59,6 @@ func (c *Client) GetSchemaByID(ctx context.Context, subjectID int) (string, erro
 	// nolint
 	// The request is always valid
 	req, _ := http.NewRequest("GET", c.baseURL.ResolveReference(path).String(), nil)
-
 	req.Header.Add("Accept", "application/json")
 
 	res, err := c.client.Do(req.WithContext(ctx))
@@ -80,4 +79,38 @@ func (c *Client) GetSchemaByID(ctx context.Context, subjectID int) (string, erro
 	}
 
 	return resBody.Schema, nil
+}
+
+// Subjects returns a list of the available subjects(schemas).
+// https://docs.confluent.io/current/schema-registry/docs/api.html#subjects
+func (c *Client) Subjects(ctx context.Context) (subjects []string, err error) {
+	type responseBody []string
+
+	// nolint
+	// The path cannot be invalid
+	path, _ := url.Parse("subjects")
+
+	// nolint
+	// The request is always valid
+	req, _ := http.NewRequest("GET", c.baseURL.ResolveReference(path).String(), nil)
+	req.Header.Add("Accept", "application/json")
+
+	res, err := c.client.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	err = parseResponseError(req, res)
+	if err != nil {
+		return nil, err
+	}
+
+	var resBody responseBody
+	err = json.NewDecoder(res.Body).Decode(&resBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return resBody, nil
 }
