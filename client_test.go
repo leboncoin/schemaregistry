@@ -51,13 +51,13 @@ func Test_GetSchemaByID_success(t *testing.T) {
 }
 
 func Test_GetSchemaByID_with_a_network_error(t *testing.T) {
-	client, err := NewClient("http://unreachable-url")
+	client, err := NewClient("foobar://unreachable-url")
 	require.NoError(t, err)
 
 	schema, err := client.GetSchemaByID(context.Background(), 42)
 
 	assert.Empty(t, schema)
-	assert.EqualError(t, err, "Get http://unreachable-url/schemas/ids/42: dial tcp: lookup unreachable-url: no such host")
+	assert.EqualError(t, err, `Get foobar://unreachable-url/schemas/ids/42: unsupported protocol scheme "foobar"`)
 }
 
 func Test_GetSchemaByID_with_a_remote_error(t *testing.T) {
