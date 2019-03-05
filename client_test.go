@@ -96,3 +96,69 @@ func Test_GetSchemaByID_with_an_invalid_json_as_response(t *testing.T) {
 	assert.Empty(t, schema)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
 }
+
+func Test_Subjects_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/subjects", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`["subject1", "subject2"]`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	subjects, err := client.Subjects(context.Background())
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, []string{"subject1", "subject2"}, subjects)
+}
+
+func Test_Subjects_with_a_network_error(t *testing.T) {
+	client, err := NewClient("foobar://unreachable-url")
+	require.NoError(t, err)
+
+	schema, err := client.Subjects(context.Background())
+
+	assert.Empty(t, schema)
+	assert.EqualError(t, err, `Get foobar://unreachable-url/subjects: unsupported protocol scheme "foobar"`)
+}
+
+func Test_Subjects_with_a_remote_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, err := w.Write([]byte(`{
+			"error_code": 404,
+			"message": "schema not found"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	schema, err := client.Subjects(context.Background())
+
+	assert.Empty(t, schema)
+	assert.EqualError(t, err, fmt.Sprintf("client: (GET: %s/subjects) failed with error code 404: schema not found", ts.URL))
+}
+
+func Test_Subjects_with_an_invalid_json_as_response(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`not a valid json`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	schema, err := client.Subjects(context.Background())
+
+	assert.Empty(t, schema)
+	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
+}
