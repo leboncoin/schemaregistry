@@ -298,3 +298,20 @@ func Test_DeleteSubject_with_an_invalid_json_as_response(t *testing.T) {
 	assert.Empty(t, versions)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
 }
+
+func Test_DeleteSubject_with_an_invalid_json_as_error_response(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, err := w.Write([]byte(`not a valid json`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	versions, err := client.DeleteSubject(context.Background(), "foobar")
+
+	assert.Empty(t, versions)
+	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
+}

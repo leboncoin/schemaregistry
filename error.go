@@ -63,7 +63,7 @@ func parseResponseError(req *http.Request, res *http.Response) error {
 
 	err := json.NewDecoder(res.Body).Decode(&resErr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to decode the response: %s", err)
 	}
 
 	resErr.URI = req.URL.String()
