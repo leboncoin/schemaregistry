@@ -46,7 +46,7 @@ func NewClient(baseURL string, options ...Option) (*Client, error) {
 
 // GetSchemaByID returns the Avro schema string identified by the id.
 //
-// id (int) – the globally unique identifier of the schema.
+// https://docs.confluent.io/current/schema-registry/docs/api.html#get--schemas-ids-int-%20id
 func (c *Client) GetSchemaByID(ctx context.Context, subjectID int) (string, error) {
 	type responseBody struct {
 		Schema string `json:"schema"`
@@ -82,6 +82,7 @@ func (c *Client) GetSchemaByID(ctx context.Context, subjectID int) (string, erro
 }
 
 // Subjects returns a list of the available subjects(schemas).
+//
 // https://docs.confluent.io/current/schema-registry/docs/api.html#subjects
 func (c *Client) Subjects(ctx context.Context) (subjects []string, err error) {
 	type responseBody []string
@@ -89,6 +90,42 @@ func (c *Client) Subjects(ctx context.Context) (subjects []string, err error) {
 	// nolint
 	// The path cannot be invalid
 	path, _ := url.Parse("subjects")
+
+	// nolint
+	// The request is always valid
+	req, _ := http.NewRequest("GET", c.baseURL.ResolveReference(path).String(), nil)
+	req.Header.Add("Accept", "application/json")
+
+	res, err := c.client.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	err = parseResponseError(req, res)
+	if err != nil {
+		return nil, err
+	}
+
+	var resBody responseBody
+	err = json.NewDecoder(res.Body).Decode(&resBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return resBody, nil
+}
+
+// Versions returns all schema version numbers registered for this subject.
+//
+// https://docs.confluent.io/current/schema-registry/docs/api.html#get--subjects-(string-%20subject)-versions
+func (c *Client) Versions(ctx context.Context, subject string) (versions []int, err error) {
+	type responseBody []int
+
+	path, err := url.Parse(fmt.Sprintf("subjects/%s/versions", subject))
+	if err != nil {
+		return nil, err
+	}
 
 	// nolint
 	// The request is always valid

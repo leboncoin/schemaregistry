@@ -162,3 +162,79 @@ func Test_Subjects_with_an_invalid_json_as_response(t *testing.T) {
 	assert.Empty(t, schema)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
 }
+
+func Test_Versions_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/subjects/foobar/versions", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`[1, 2, 3, 4]`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	versions, err := client.Versions(context.Background(), "foobar")
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, []int{1, 2, 3, 4}, versions)
+}
+
+func Test_Versions_with_an_unparsable_subject(t *testing.T) {
+	client, err := NewClient("foobar://unreachable-url")
+	require.NoError(t, err)
+
+	versions, err := client.Versions(context.Background(), "%gh&%ij")
+
+	assert.Empty(t, versions)
+	assert.EqualError(t, err, `parse subjects/%gh&%ij/versions: invalid URL escape "%gh"`)
+}
+
+func Test_Versions_with_a_network_error(t *testing.T) {
+	client, err := NewClient("foobar://unreachable-url")
+	require.NoError(t, err)
+
+	versions, err := client.Versions(context.Background(), "foobar")
+
+	assert.Empty(t, versions)
+	assert.EqualError(t, err, `Get foobar://unreachable-url/subjects/foobar/versions: unsupported protocol scheme "foobar"`)
+}
+
+func Test_Versions_with_a_remote_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, err := w.Write([]byte(`{
+			"error_code": 404,
+			"message": "subject not found"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	subjects, err := client.Versions(context.Background(), "foobar")
+
+	assert.Empty(t, subjects)
+	assert.EqualError(t, err, fmt.Sprintf("client: (GET: %s/subjects/foobar/versions) failed with error code 404: subject not found", ts.URL))
+}
+
+func Test_Versions_with_an_invalid_json_as_response(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`not a valid json`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	subject, err := client.Versions(context.Background(), "foobar")
+
+	assert.Empty(t, subject)
+	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
+}
