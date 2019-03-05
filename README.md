@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/leboncoin/schema-registry/branch/master/graph/badge.svg)](https://codecov.io/gh/leboncoin/schema-registry)
+
 # Go client for Schema Registry
 
 A modern rewrite of [Landdop/schema-registry](https://github.com/Landoop/schema-registry)
