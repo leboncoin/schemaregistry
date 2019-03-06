@@ -394,3 +394,69 @@ func Test_IsRegistered_with_an_invalid_response_format(t *testing.T) {
 	assert.False(t, exists)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
 }
+
+func Test_RegisterNewSchema_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"id": 1}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	version, err := client.RegisterNewSchema(context.Background(), "test", `{
+		"type": "record",
+		"name": "test",
+		"fields": [{ "type": "string", "name": "field1" }]
+    }`)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, version)
+}
+
+func Test_RegisterNewSchema_with_a_remote_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, err := w.Write([]byte(`{
+"error_code": 404,
+			"message": "subject not found"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	version, err := client.RegisterNewSchema(context.Background(), "test", `{
+		"type": "record",
+		"name": "test",
+		"fields": [{ "type": "string", "name": "field1" }]
+    }`)
+
+	assert.Equal(t, -1, version)
+	assert.EqualError(t, err, fmt.Sprintf("client: (POST: %s/subjects/test/versions) failed with error code 404: subject not found", ts.URL))
+}
+
+func Test_RegisterNewSchema_with_an_invalid_response_format(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte("not a valid json"))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	version, err := client.RegisterNewSchema(context.Background(), "test", `{
+		"type": "record",
+		"name": "test",
+		"fields": [{ "type": "string", "name": "field1" }]
+    }`)
+
+	assert.Equal(t, -1, version)
+	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
+}
