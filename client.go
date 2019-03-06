@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 // Option function used to apply modifications to the client.
@@ -199,6 +200,34 @@ func (c *Client) RegisterNewSchema(ctx context.Context, subject string, avroSche
 	}
 
 	return resBody.ID, nil
+}
+
+func (c *Client) getSchemaBySubjectAndVersion(ctx context.Context, subject string, version string) (*Schema, error) {
+	rawBody, err := c.execRequest(ctx, "GET", fmt.Sprintf("subjects/%s/versions/%s", subject, version), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var schema Schema
+	err = json.Unmarshal(rawBody, &schema)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return &schema, nil
+}
+
+// GetSchemaBySubjectAndVersion returns the schema for a particular subject and version.
+//
+// https://docs.confluent.io/current/schema-registry/docs/api.html#get--subjects-(string-%20subject)-versions-(versionId-%20version)
+func (c *Client) GetSchemaBySubjectAndVersion(ctx context.Context, subject string, version int) (*Schema, error) {
+	return c.getSchemaBySubjectAndVersion(ctx, subject, strconv.Itoa(version))
+}
+
+// GetLatestSchema returns the latest version of a schema.
+// See `GetSchemaAtVersion` to retrieve a subject schema by a specific version.
+func (c *Client) GetLatestSchema(ctx context.Context, subject string) (*Schema, error) {
+	return c.getSchemaBySubjectAndVersion(ctx, subject, "latest")
 }
 
 // Execute the request and check for an error into the response.

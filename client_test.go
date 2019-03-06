@@ -397,6 +397,9 @@ func Test_IsRegistered_with_an_invalid_response_format(t *testing.T) {
 
 func Test_RegisterNewSchema_success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/subjects/test/versions", r.URL.String())
+
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"id": 1}`))
 		require.NoError(t, err)
@@ -458,5 +461,98 @@ func Test_RegisterNewSchema_with_an_invalid_response_format(t *testing.T) {
     }`)
 
 	assert.Equal(t, -1, version)
+	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
+}
+
+func Test_GetSchemabySubjectAndVersion_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/subjects/test/versions/1", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{
+			"subject": "test",
+			"version": 1,
+			"schema": "{\"type\": \"string\"}"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	schema, err := client.GetSchemaBySubjectAndVersion(context.Background(), "test", 1)
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, &Schema{
+		Subject: "test",
+		Version: 1,
+		Schema:  `{"type": "string"}`,
+	}, schema)
+}
+
+func Test_GetLatestSchema_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/subjects/test/versions/latest", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{
+			"subject": "test",
+			"version": 1,
+			"schema": "{\"type\": \"string\"}"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	schema, err := client.GetLatestSchema(context.Background(), "test")
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, &Schema{
+		Subject: "test",
+		Version: 1,
+		Schema:  `{"type": "string"}`,
+	}, schema)
+}
+
+func Test_GetSchemabySubjectAndVersion_with_a_remote_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, err := w.Write([]byte(`{
+			"error_code": 500,
+			"message": "internal server error"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	schema, err := client.GetSchemaBySubjectAndVersion(context.Background(), "test", 1)
+
+	assert.Nil(t, schema)
+	assert.EqualError(t, err, fmt.Sprintf("client: (GET: %s/subjects/test/versions/1) failed with error code 500: internal server error", ts.URL))
+}
+
+func Test_GetSchemabySubjectAndVersion_with_an_invalid_response_format(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`not a valid json`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	schema, err := client.GetSchemaBySubjectAndVersion(context.Background(), "test", 1)
+
+	assert.Nil(t, schema)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
 }
