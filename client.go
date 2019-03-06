@@ -168,6 +168,39 @@ func (c *Client) IsRegistered(ctx context.Context, subject string, schema string
 	return true, &resBody, nil
 }
 
+// RegisterNewSchema registers a schema.
+// The returned identifier should be used to retrieve this schema from the
+// schemas resource and is different from the schema’s version which is
+// associated with that name.
+//
+// https://docs.confluent.io/current/schema-registry/docs/api.html#post--subjects-(string-%20subject)-versions
+func (c *Client) RegisterNewSchema(ctx context.Context, subject string, avroSchema string) (int, error) {
+	type requestBody struct {
+		Schema string `json:"schema"`
+	}
+
+	type responseBody struct {
+		ID int `json:"id"`
+	}
+
+	// nolint
+	// Error not possible here.
+	reqBody, _ := json.Marshal(&requestBody{Schema: avroSchema})
+
+	rawBody, err := c.execRequest(ctx, "POST", fmt.Sprintf("subjects/%s/versions", subject), bytes.NewReader(reqBody))
+	if err != nil {
+		return -1, err
+	}
+
+	var resBody responseBody
+	err = json.Unmarshal(rawBody, &resBody)
+	if err != nil {
+		return -1, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return resBody.ID, nil
+}
+
 // Execute the request and check for an error into the response.
 //
 // In case of succes it return the raw body.
