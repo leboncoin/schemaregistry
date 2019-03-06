@@ -1,6 +1,7 @@
 package schemaregistry
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,17 @@ type Client struct {
 	baseURL *url.URL
 
 	client *http.Client
+}
+
+// Schema describes a schema, look `GetSchema` for more.
+type Schema struct {
+	// Schema is the Avro schema string.
+	Schema string `json:"schema"`
+	// Subject where the schema is registered for.
+	Subject string `json:"subject"`
+	// Version of the returned schema.
+	Version int `json:"version"`
+	ID      int `json:"id,omitempty"`
 }
 
 // UsingClient modifies the underline HTTP Client that schema registry is using for contact with the backend server.
@@ -128,6 +140,32 @@ func (c *Client) DeleteSubject(ctx context.Context, subject string) (versions []
 	}
 
 	return resBody, nil
+}
+
+// IsRegistered tells if the given "schema" is registered for this "subject".
+//
+// https://docs.confluent.io/current/schema-registry/docs/api.html#post--subjects-(string-%20subject)
+func (c *Client) IsRegistered(ctx context.Context, subject string, schema string) (bool, *Schema, error) {
+	type requestBody struct {
+		Schema string `json:"schema"`
+	}
+
+	// nolint
+	// Error not possible here.
+	reqBody, _ := json.Marshal(&requestBody{Schema: schema})
+
+	rawBody, err := c.execRequest(ctx, "POST", fmt.Sprintf("subjects/%s", subject), bytes.NewReader(reqBody))
+	if err != nil {
+		return false, nil, err
+	}
+
+	var resBody Schema
+	err = json.Unmarshal(rawBody, &resBody)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return true, &resBody, nil
 }
 
 // Execute the request and check for an error into the response.
