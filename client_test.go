@@ -65,7 +65,7 @@ func Test_GetSchemaByID_with_a_remote_error(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte(`{
-			"error_code": 404,
+"error_code": 404,
 			"message": "schema not found"
 		}`))
 		require.NoError(t, err)
@@ -132,7 +132,7 @@ func Test_Subjects_with_a_remote_error(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte(`{
-			"error_code": 404,
+"error_code": 404,
 			"message": "schema not found"
 		}`))
 		require.NoError(t, err)
@@ -209,7 +209,7 @@ func Test_Versions_with_a_remote_error(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte(`{
-			"error_code": 404,
+"error_code": 404,
 			"message": "subject not found"
 		}`))
 		require.NoError(t, err)
@@ -266,7 +266,7 @@ func Test_DeleteSubject_with_an_error(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte(`{
-			"error_code": 404,
+"error_code": 404,
 			"message": "subject not found"
 		}`))
 		require.NoError(t, err)
@@ -313,5 +313,84 @@ func Test_DeleteSubject_with_an_invalid_json_as_error_response(t *testing.T) {
 	versions, err := client.DeleteSubject(context.Background(), "foobar")
 
 	assert.Empty(t, versions)
+	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
+}
+
+func Test_IsRegistered_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/subjects/test", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{
+		"subject": "test",
+		"id": 1,
+		"version": 3,
+		"schema": "{ \"type\": \"record\", \"name\": \"test\", \"fields\": [{ \"type\": \"string\", \"name\": \"field1\" }] }"
+	}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	exists, schema, err := client.IsRegistered(context.Background(), "test", `{
+		"schema": "{ \"type\": \"record\", \"name\": \"test\", \"fields\": [{ \"type\": \"string\", \"name\": \"field1\" }]
+		}"
+    }`)
+
+	assert.NoError(t, err)
+	assert.True(t, exists)
+	assert.EqualValues(t, &Schema{
+		Subject: "test",
+		ID:      1,
+		Version: 3,
+		Schema:  `{ "type": "record", "name": "test", "fields": [{ "type": "string", "name": "field1" }] }`,
+	}, schema)
+}
+
+func Test_IsRegistered_with_a_remote_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, err := w.Write([]byte(`{
+"error_code": 404,
+			"message": "schema not found"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	exists, schema, err := client.IsRegistered(context.Background(), "test", `{
+		"schema": "{ \"type\": \"record\", \"name\": \"test\", \"fields\": [{ \"type\": \"string\", \"name\": \"field1\" }]
+		}"
+    }`)
+
+	assert.Empty(t, schema)
+	assert.False(t, exists)
+	assert.EqualError(t, err, fmt.Sprintf("client: (POST: %s/subjects/test) failed with error code 404: schema not found", ts.URL))
+}
+
+func Test_IsRegistered_with_an_invalid_response_format(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte("not a valid json"))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	exists, schema, err := client.IsRegistered(context.Background(), "test", `{
+		"schema": "{ \"type\": \"record\", \"name\": \"test\", \"fields\": [{ \"type\": \"string\", \"name\": \"field1\" }]
+		}"
+    }`)
+
+	assert.Empty(t, schema)
+	assert.False(t, exists)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
 }
