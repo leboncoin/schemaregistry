@@ -292,6 +292,42 @@ func (c *Client) DeleteLatestSchemaVersion(ctx context.Context, subject string) 
 	return c.deleteSchemaVersion(ctx, subject, "latest")
 }
 
+// SchemaCompatibleWith test input schema against a particular version of a subject's
+// schema for compatibility.
+//
+// Note that the compatibility level applied for the check is the configured
+// compatibility level for the subject (http:get:: /config/(string: subject)).
+// If this subject's compatibility level was never changed, then the global
+// compatibility level applies (http:get:: /config).
+//
+// https://docs.confluent.io/current/schema-registry/docs/api.html#post--compatibility-subjects-(string-%20subject)-versions-(versionId-%20version)
+func (c *Client) SchemaCompatibleWith(ctx context.Context, schema string, subject string, version int) (bool, error) {
+	type requestBody struct {
+		Schema string `json:"schema"`
+	}
+
+	type responseBody struct {
+		IsCompatible bool `json:"is_compatible"`
+	}
+
+	// nolint
+	// Error not possible here.
+	reqBody, _ := json.Marshal(&requestBody{Schema: schema})
+
+	rawBody, err := c.execRequest(ctx, "POST", fmt.Sprintf("compatibility/subjects/%s/versions/%d", subject, version), bytes.NewReader(reqBody))
+	if err != nil {
+		return false, err
+	}
+
+	var resBody responseBody
+	err = json.Unmarshal(rawBody, &resBody)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return resBody.IsCompatible, nil
+}
+
 // Execute the request and check for an error into the response.
 //
 // In case of succes it return the raw body.
