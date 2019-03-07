@@ -692,3 +692,62 @@ func Test_DeleteLatestSchemaVersion_success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 4, id)
 }
+
+func Test_SchemaCompatibleWith_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/compatibility/subjects/test/versions/4", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{
+			"is_compatible": true
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	isCompatible, err := client.SchemaCompatibleWith(context.Background(), `{"type": "string"}`, "test", 4)
+
+	assert.NoError(t, err)
+	assert.True(t, isCompatible)
+}
+
+func Test_SchemaCompatibleWith_with_a_remote_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, err := w.Write([]byte(`{
+			"error_code": 500,
+			"message": "internal server error"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	isCompatible, err := client.SchemaCompatibleWith(context.Background(), `{"type": "string"}`, "test", 2)
+
+	assert.False(t, isCompatible)
+	assert.EqualError(t, err, fmt.Sprintf("client: (POST: %s/compatibility/subjects/test/versions/2) failed with error code 500: internal server error", ts.URL))
+}
+
+func Test_SchemaCompatibleWith_with_an_invalid_response_format(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`not a valid json`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	isCompatible, err := client.SchemaCompatibleWith(context.Background(), `{"type": "string"}`, "test", 2)
+
+	assert.False(t, isCompatible)
+	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
+}
