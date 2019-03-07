@@ -615,3 +615,80 @@ func Test_GetConfig_with_an_invalid_response_format(t *testing.T) {
 	assert.Nil(t, config)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
 }
+
+func Test_DeleteSchemaVersion_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "DELETE", r.Method)
+		assert.Equal(t, "/subjects/test/versions/2", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`4`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	id, err := client.DeleteSchemaVersion(context.Background(), "test", 2)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 4, id)
+}
+
+func Test_DeleteSchemaVersion_with_a_remote_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, err := w.Write([]byte(`{
+			"error_code": 500,
+			"message": "internal server error"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	id, err := client.DeleteSchemaVersion(context.Background(), "test", 2)
+
+	assert.Equal(t, -1, id)
+	assert.EqualError(t, err, fmt.Sprintf("client: (DELETE: %s/subjects/test/versions/2) failed with error code 500: internal server error", ts.URL))
+}
+
+func Test_DeleteSchemaVersion_with_an_invalid_response_format(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`not a valid json`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	id, err := client.DeleteSchemaVersion(context.Background(), "test", 2)
+
+	assert.Equal(t, -1, id)
+	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
+}
+
+func Test_DeleteLatestSchemaVersion_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "DELETE", r.Method)
+		assert.Equal(t, "/subjects/test/versions/latest", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`4`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	id, err := client.DeleteLatestSchemaVersion(context.Background(), "test")
+
+	assert.NoError(t, err)
+	assert.Equal(t, 4, id)
+}

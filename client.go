@@ -255,6 +255,43 @@ func (c *Client) GetConfig(ctx context.Context, subject string) (*Config, error)
 	return &config, nil
 }
 
+func (c *Client) deleteSchemaVersion(ctx context.Context, subject string, version string) (int, error) {
+	rawBody, err := c.execRequest(ctx, "DELETE", fmt.Sprintf("subjects/%s/versions/%s", subject, version), nil)
+	if err != nil {
+		return -1, err
+	}
+
+	var id int
+	err = json.Unmarshal(rawBody, &id)
+	if err != nil {
+		return -1, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return id, nil
+}
+
+// DeleteSchemaVersion deletes a specific version of the schema registered
+//
+// under this subject.
+//
+// This only deletes the version and the schema ID remains intact making it still
+// possible to decode data using the schema ID. This API is recommended to be
+// used only in development environments or under extreme circumstances where-in,
+// its required to delete a previously registered schema for compatibility
+// purposes or re-register previously registered schema.
+//
+// https://docs.confluent.io/current/schema-registry/docs/api.html#delete--subjects-(string-%20subject)-versions-(versionId-%20version)
+func (c *Client) DeleteSchemaVersion(ctx context.Context, subject string, version int) (int, error) {
+	return c.deleteSchemaVersion(ctx, subject, strconv.Itoa(version))
+}
+
+// DeleteLatestSchemaVersion remove the latest version of a schema.
+//
+// See `DeleteLatestSchemaVersion` to retrieve a subject schema by a specific version.
+func (c *Client) DeleteLatestSchemaVersion(ctx context.Context, subject string) (int, error) {
+	return c.deleteSchemaVersion(ctx, subject, "latest")
+}
+
 // Execute the request and check for an error into the response.
 //
 // In case of succes it return the raw body.
