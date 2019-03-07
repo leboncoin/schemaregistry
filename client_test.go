@@ -556,3 +556,25 @@ func Test_GetSchemabySubjectAndVersion_with_an_invalid_response_format(t *testin
 	assert.Nil(t, schema)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
 }
+
+func Test_GetConfig_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/config/test", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"compatibility": "FULL"}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	config, err := client.GetConfig(context.Background(), "test")
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, &Config{
+		Compatibility: "FULL",
+	}, config)
+}
