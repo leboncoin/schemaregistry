@@ -33,6 +33,12 @@ type Schema struct {
 	ID      int `json:"id,omitempty"`
 }
 
+// Config describes a subject or globa schema-registry configuration
+type Config struct {
+	// Compatibility mode of subject or global
+	Compatibility string `json:"compatibility"`
+}
+
 // UsingClient modifies the underline HTTP Client that schema registry is using for contact with the backend server.
 func UsingClient(httpClient *http.Client) Option {
 	return func(c *Client) {
@@ -228,6 +234,25 @@ func (c *Client) GetSchemaBySubjectAndVersion(ctx context.Context, subject strin
 // See `GetSchemaAtVersion` to retrieve a subject schema by a specific version.
 func (c *Client) GetLatestSchema(ctx context.Context, subject string) (*Schema, error) {
 	return c.getSchemaBySubjectAndVersion(ctx, subject, "latest")
+}
+
+// GetConfig returns the configuration (Config type) for global Schema-Registry or a specific
+// subject. When Config returned has "compatibilityLevel" empty, it's using global settings.
+//
+// https://docs.confluent.io/current/schema-registry/docs/api.html#get--config-(string-%20subject)
+func (c *Client) GetConfig(ctx context.Context, subject string) (*Config, error) {
+	rawBody, err := c.execRequest(ctx, "GET", fmt.Sprintf("config/%s", subject), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var config Config
+	err = json.Unmarshal(rawBody, &config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return &config, nil
 }
 
 // Execute the request and check for an error into the response.
