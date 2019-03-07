@@ -22,3 +22,53 @@ aims to be a more up-to-date client by adding the following features:
 - It leave the gzip managment to the go client
 - It keep everything tested
 - It propose a mock
+
+
+## Example
+
+
+```go
+import "github.com/landoop/schema-registry"
+
+client, _ := schemaregistry.NewClient("http://localhost:8081")
+client.Subjects()
+```
+
+Or, to use with a Schema Registry endpoint listening on HTTPS:
+
+```go
+import (
+    "crypto/tls"
+    "crypto/x509"
+    "io/ioutil"
+
+    "github.com/landoop/schema-registry"
+)
+
+// Create a TLS config to use to connect to Schema Registry. This config will permit TLS connections to an endpoint
+// whose TLS cert is signed by the given caFile.
+caCert, err := ioutil.ReadFile("/path/to/ca/file")
+if err != nil {
+    panic(err)
+}
+
+caCertPool := x509.NewCertPool()
+caCertPool.AppendCertsFromPEM(caCert)
+
+tlsConfig :=  &tls.Config{
+    RootCAs:            caCertPool,
+    InsecureSkipVerify: true,
+}
+
+httpsClientTransport := &http.Transport{
+  TLSClientConfig: tlsConfig,
+}
+
+httpsClient := &http.Client{
+  Transport: httpsClientTransport,
+}
+
+// Create the Schema Registry client
+client, _ := schemaregistry.NewClient("https://localhost:8081", UsingClient(httpsClient))
+client.Subjects()
+```
