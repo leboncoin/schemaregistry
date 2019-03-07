@@ -578,3 +578,40 @@ func Test_GetConfig_success(t *testing.T) {
 		Compatibility: "FULL",
 	}, config)
 }
+
+func Test_GetConfig_with_a_remote_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, err := w.Write([]byte(`{
+			"error_code": 500,
+			"message": "internal server error"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	config, err := client.GetConfig(context.Background(), "test")
+
+	assert.Nil(t, config)
+	assert.EqualError(t, err, fmt.Sprintf("client: (GET: %s/config/test) failed with error code 500: internal server error", ts.URL))
+}
+
+func Test_GetConfig_with_an_invalid_response_format(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`not a valid json`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	config, err := client.GetConfig(context.Background(), "test")
+
+	assert.Nil(t, config)
+	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
+}
