@@ -1,4 +1,4 @@
-module github.com/leboncoin/schema-registry
+module github.com/leboncoin/schemaregistry
 
 go 1.12
 
