@@ -9,6 +9,7 @@ import (
 // These numbers are used by the schema registry to communicate errors.
 const (
 	subjectNotFoundCode = 40401
+	versionNotFoundCode = 40402
 	schemaNotFoundCode  = 40403
 )
 
@@ -35,6 +36,20 @@ func IsSubjectNotFound(err error) bool {
 
 	if resErr, ok := err.(ResourceError); ok {
 		return resErr.ErrorCode == subjectNotFoundCode
+	}
+
+	return false
+}
+
+// IsVersionNotFound checks the returned error to see if it's related to a
+// version not found.
+func IsVersionNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if resErr, ok := err.(ResourceError); ok {
+		return resErr.ErrorCode == versionNotFoundCode
 	}
 
 	return false

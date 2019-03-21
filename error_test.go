@@ -27,6 +27,26 @@ func Test_IsSubjectNotFound_with_system_error(t *testing.T) {
 	assert.False(t, IsSubjectNotFound(fmt.Errorf("some-error")))
 }
 
+func Test_IsVersionNotFound(t *testing.T) {
+	err := ResourceError{
+		ErrorCode: versionNotFoundCode,
+		Method:    "GET",
+		URI:       "some-uri",
+		Message:   "some-error",
+	}
+
+	assert.True(t, IsVersionNotFound(err))
+	assert.False(t, IsSubjectNotFound(err))
+}
+
+func Test_IsVersionNotFound_with_no_error(t *testing.T) {
+	assert.False(t, IsVersionNotFound(nil))
+}
+
+func Test_IsVersionNotFound_with_system_error(t *testing.T) {
+	assert.False(t, IsVersionNotFound(fmt.Errorf("some-error")))
+}
+
 func Test_IsSchemaNotFound(t *testing.T) {
 	err := ResourceError{
 		ErrorCode: schemaNotFoundCode,
