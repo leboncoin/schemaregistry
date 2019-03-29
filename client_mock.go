@@ -56,7 +56,7 @@ func (c *ClientMock) IsRegistered(ctx context.Context, subject string, schema st
 	args := c.Called(subject, schema)
 
 	if args.Get(1) == nil {
-		return false, nil, args.Error(2)
+		return args.Bool(0), nil, args.Error(2)
 	}
 
 	return args.Bool(0), args.Get(1).(*Schema), args.Error(2)
