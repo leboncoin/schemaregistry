@@ -162,6 +162,10 @@ func (c *Client) IsRegistered(ctx context.Context, subject string, schema string
 	reqBody, _ := json.Marshal(&requestBody{Schema: schema})
 
 	rawBody, err := c.execRequest(ctx, "POST", fmt.Sprintf("subjects/%s", subject), bytes.NewReader(reqBody))
+	if IsSchemaNotFound(err) {
+		return false, nil, nil
+	}
+
 	if err != nil {
 		return false, nil, err
 	}
