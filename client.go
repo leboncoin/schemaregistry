@@ -347,7 +347,7 @@ func (c *Client) execRequest(ctx context.Context, method string, rawPath string,
 	// nolint
 	// The request is always valid
 	req, _ := http.NewRequest(method, c.baseURL.ResolveReference(path).String(), body)
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Accept", "application/vnd.schemaregistry.v1+json, application/vnd.schemaregistry+json, application/json")
 
 	res, err := c.client.Do(req.WithContext(ctx))
 	if err != nil {
