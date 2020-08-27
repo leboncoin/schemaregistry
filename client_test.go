@@ -15,7 +15,7 @@ import (
 func Test_NewClient_with_an_invalid_baseurl(t *testing.T) {
 	client, err := NewClient("%gh&%ij")
 
-	assert.EqualError(t, err, `parse %gh&%ij: invalid URL escape "%gh"`)
+	assert.EqualError(t, err, `parse "%gh&%ij": invalid URL escape "%gh"`)
 	assert.Nil(t, client)
 }
 
@@ -58,7 +58,7 @@ func Test_GetSchemaByID_with_a_network_error(t *testing.T) {
 	schema, err := client.GetSchemaByID(context.Background(), 42)
 
 	assert.Empty(t, schema)
-	assert.EqualError(t, err, `Get foobar://unreachable-url/schemas/ids/42: unsupported protocol scheme "foobar"`)
+	assert.EqualError(t, err, `Get "foobar://unreachable-url/schemas/ids/42": unsupported protocol scheme "foobar"`)
 }
 
 func Test_GetSchemaByID_with_a_remote_error(t *testing.T) {
@@ -125,7 +125,7 @@ func Test_Subjects_with_a_network_error(t *testing.T) {
 	schema, err := client.Subjects(context.Background())
 
 	assert.Empty(t, schema)
-	assert.EqualError(t, err, `Get foobar://unreachable-url/subjects: unsupported protocol scheme "foobar"`)
+	assert.EqualError(t, err, `Get "foobar://unreachable-url/subjects": unsupported protocol scheme "foobar"`)
 }
 
 func Test_Subjects_with_a_remote_error(t *testing.T) {
@@ -192,7 +192,7 @@ func Test_Versions_with_an_unparsable_subject(t *testing.T) {
 	versions, err := client.Versions(context.Background(), "%gh&%ij")
 
 	assert.Empty(t, versions)
-	assert.EqualError(t, err, `parse subjects/%gh&%ij/versions: invalid URL escape "%gh"`)
+	assert.EqualError(t, err, `parse "subjects/%gh&%ij/versions": invalid URL escape "%gh"`)
 }
 
 func Test_Versions_with_a_network_error(t *testing.T) {
@@ -202,7 +202,7 @@ func Test_Versions_with_a_network_error(t *testing.T) {
 	versions, err := client.Versions(context.Background(), "foobar")
 
 	assert.Empty(t, versions)
-	assert.EqualError(t, err, `Get foobar://unreachable-url/subjects/foobar/versions: unsupported protocol scheme "foobar"`)
+	assert.EqualError(t, err, `Get "foobar://unreachable-url/subjects/foobar/versions": unsupported protocol scheme "foobar"`)
 }
 
 func Test_Versions_with_a_remote_error(t *testing.T) {

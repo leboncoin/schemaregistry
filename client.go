@@ -19,7 +19,9 @@ type Option func(*Client)
 type Client struct {
 	baseURL *url.URL
 
-	client *http.Client
+	client   *http.Client
+	username string
+	password string
 }
 
 // Schema describes a schema, look `GetSchema` for more.
@@ -43,6 +45,13 @@ type Config struct {
 func UsingClient(httpClient *http.Client) Option {
 	return func(c *Client) {
 		c.client = httpClient
+	}
+}
+
+func WithBasicAuth(user string, password string) Option {
+	return func(c *Client) {
+		c.username = user
+		c.password = password
 	}
 }
 
@@ -353,6 +362,8 @@ func (c *Client) execRequest(ctx context.Context, method string, rawPath string,
 	req, _ := http.NewRequest(method, c.baseURL.ResolveReference(path).String(), body)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/vnd.schemaregistry.v1+json, application/vnd.schemaregistry+json, application/json")
+
+	req.SetBasicAuth(c.username, c.password)
 
 	res, err := c.client.Do(req.WithContext(ctx))
 	if err != nil {
