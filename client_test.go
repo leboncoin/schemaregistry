@@ -751,3 +751,49 @@ func Test_SchemaCompatibleWith_with_an_invalid_response_format(t *testing.T) {
 	assert.False(t, isCompatible)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
 }
+
+func Test_SetGlobalConfig_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "PUT", r.Method)
+		assert.Equal(t, "/config", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"compatibility": "FULL"}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	config, err := client.SetGlobalConfig(context.Background(), Config{
+		Compatibility: "FULL",
+	})
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, &Config{
+		Compatibility: "FULL",
+	}, config)
+}
+
+func Test_SetGlobalConfig_with_a_remote_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, err := w.Write([]byte(`{
+			"error_code": 500,
+			"message": "internal server error"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	config, err := client.SetGlobalConfig(context.Background(), Config{
+		Compatibility: "FULL",
+	})
+
+	assert.Nil(t, config)
+	assert.EqualError(t, err, fmt.Sprintf("client: (PUT: %s/config) failed with error code 500: internal server error", ts.URL))
+}

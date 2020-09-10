@@ -268,6 +268,25 @@ func (c *Client) GetConfig(ctx context.Context, subject string) (*Config, error)
 	return &config, nil
 }
 
+func (c *Client) SetGlobalConfig(ctx context.Context, config Config) (*Config, error) {
+	// nolint
+	// Error not possible here.
+	reqBody, _ := json.Marshal(&config)
+
+	rawBody, err := c.execRequest(ctx, "PUT", "config", bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+
+	var newConfig Config
+	err = json.Unmarshal(rawBody, &newConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return &newConfig, nil
+}
+
 func (c *Client) deleteSchemaVersion(ctx context.Context, subject string, version string) (int, error) {
 	rawBody, err := c.execRequest(ctx, "DELETE", fmt.Sprintf("subjects/%s/versions/%s", subject, version), nil)
 	if err != nil {
