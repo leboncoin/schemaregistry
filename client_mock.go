@@ -122,3 +122,14 @@ func (c *ClientMock) SchemaCompatibleWith(ctx context.Context, schema string, su
 
 	return args.Bool(0), args.Error(1)
 }
+
+// SetGlobalConfig method mock.
+func (c *ClientMock) SetGlobalConfig(ctx context.Context, config Config) (*Config, error) {
+	args := c.Called(config)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*Config), args.Error(1)
+}
