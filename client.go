@@ -141,10 +141,10 @@ func (c *Client) Versions(ctx context.Context, subject string) (versions []int, 
 // Returns the versions of the schema deleted under this subject.
 //
 // https://docs.confluent.io/current/schema-registry/docs/api.html#delete--subjects-(string-%20subject)
-func (c *Client) DeleteSubject(ctx context.Context, subject string) (versions []int, err error) {
+func (c *Client) DeleteSubject(ctx context.Context, subject string, permanent bool) (versions []int, err error) {
 	type responseBody []int
 
-	rawBody, err := c.execRequest(ctx, "DELETE", fmt.Sprintf("subjects/%s", subject), nil)
+	rawBody, err := c.execRequest(ctx, "DELETE", fmt.Sprintf("subjects/%s?permanent=%v", subject, permanent), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -287,8 +287,8 @@ func (c *Client) SetGlobalConfig(ctx context.Context, config Config) (*Config, e
 	return &newConfig, nil
 }
 
-func (c *Client) deleteSchemaVersion(ctx context.Context, subject string, version string) (int, error) {
-	rawBody, err := c.execRequest(ctx, "DELETE", fmt.Sprintf("subjects/%s/versions/%s", subject, version), nil)
+func (c *Client) deleteSchemaVersion(ctx context.Context, subject string, version string, permanent bool) (int, error) {
+	rawBody, err := c.execRequest(ctx, "DELETE", fmt.Sprintf("subjects/%s/versions/%s?permanent=%v", subject, version, permanent), nil)
 	if err != nil {
 		return -1, err
 	}
@@ -313,15 +313,15 @@ func (c *Client) deleteSchemaVersion(ctx context.Context, subject string, versio
 // purposes or re-register previously registered schema.
 //
 // https://docs.confluent.io/current/schema-registry/docs/api.html#delete--subjects-(string-%20subject)-versions-(versionId-%20version)
-func (c *Client) DeleteSchemaVersion(ctx context.Context, subject string, version int) (int, error) {
-	return c.deleteSchemaVersion(ctx, subject, strconv.Itoa(version))
+func (c *Client) DeleteSchemaVersion(ctx context.Context, subject string, version int, permanent bool) (int, error) {
+	return c.deleteSchemaVersion(ctx, subject, strconv.Itoa(version), permanent)
 }
 
 // DeleteLatestSchemaVersion remove the latest version of a schema.
 //
 // See `DeleteLatestSchemaVersion` to retrieve a subject schema by a specific version.
-func (c *Client) DeleteLatestSchemaVersion(ctx context.Context, subject string) (int, error) {
-	return c.deleteSchemaVersion(ctx, subject, "latest")
+func (c *Client) DeleteLatestSchemaVersion(ctx context.Context, subject string, permanent bool) (int, error) {
+	return c.deleteSchemaVersion(ctx, subject, "latest", permanent)
 }
 
 // SchemaCompatibleWith test input schema against a particular version of a subject's

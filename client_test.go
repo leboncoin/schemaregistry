@@ -245,7 +245,7 @@ func Test_Versions_with_an_invalid_json_as_response(t *testing.T) {
 func Test_DeleteSubject_success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "DELETE", r.Method)
-		assert.Equal(t, "/subjects/foobar", r.URL.String())
+		assert.Equal(t, "/subjects/foobar?permanent=true", r.URL.String())
 
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`[1, 2, 3, 4]`))
@@ -256,7 +256,7 @@ func Test_DeleteSubject_success(t *testing.T) {
 	client, err := NewClient(ts.URL)
 	require.NoError(t, err)
 
-	versions, err := client.DeleteSubject(context.Background(), "foobar")
+	versions, err := client.DeleteSubject(context.Background(), "foobar", true)
 
 	assert.NoError(t, err)
 	assert.EqualValues(t, []int{1, 2, 3, 4}, versions)
@@ -276,10 +276,10 @@ func Test_DeleteSubject_with_an_error(t *testing.T) {
 	client, err := NewClient(ts.URL)
 	require.NoError(t, err)
 
-	versions, err := client.DeleteSubject(context.Background(), "foobar")
+	versions, err := client.DeleteSubject(context.Background(), "foobar", false)
 
 	assert.Empty(t, versions)
-	assert.EqualError(t, err, fmt.Sprintf("client: (DELETE: %s/subjects/foobar) failed with error code 404: subject not found", ts.URL))
+	assert.EqualError(t, err, fmt.Sprintf("client: (DELETE: %s/subjects/foobar?permanent=false) failed with error code 404: subject not found", ts.URL))
 }
 
 func Test_DeleteSubject_with_an_invalid_json_as_response(t *testing.T) {
@@ -293,7 +293,7 @@ func Test_DeleteSubject_with_an_invalid_json_as_response(t *testing.T) {
 	client, err := NewClient(ts.URL)
 	require.NoError(t, err)
 
-	versions, err := client.DeleteSubject(context.Background(), "foobar")
+	versions, err := client.DeleteSubject(context.Background(), "foobar", true)
 
 	assert.Empty(t, versions)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
@@ -310,7 +310,7 @@ func Test_DeleteSubject_with_an_invalid_json_as_error_response(t *testing.T) {
 	client, err := NewClient(ts.URL)
 	require.NoError(t, err)
 
-	versions, err := client.DeleteSubject(context.Background(), "foobar")
+	versions, err := client.DeleteSubject(context.Background(), "foobar", false)
 
 	assert.Empty(t, versions)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
@@ -619,7 +619,7 @@ func Test_GetConfig_with_an_invalid_response_format(t *testing.T) {
 func Test_DeleteSchemaVersion_success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "DELETE", r.Method)
-		assert.Equal(t, "/subjects/test/versions/2", r.URL.String())
+		assert.Equal(t, "/subjects/test/versions/2?permanent=true", r.URL.String())
 
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`4`))
@@ -630,7 +630,7 @@ func Test_DeleteSchemaVersion_success(t *testing.T) {
 	client, err := NewClient(ts.URL)
 	require.NoError(t, err)
 
-	id, err := client.DeleteSchemaVersion(context.Background(), "test", 2)
+	id, err := client.DeleteSchemaVersion(context.Background(), "test", 2, true)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 4, id)
@@ -650,10 +650,10 @@ func Test_DeleteSchemaVersion_with_a_remote_error(t *testing.T) {
 	client, err := NewClient(ts.URL)
 	require.NoError(t, err)
 
-	id, err := client.DeleteSchemaVersion(context.Background(), "test", 2)
+	id, err := client.DeleteSchemaVersion(context.Background(), "test", 2, false)
 
 	assert.Equal(t, -1, id)
-	assert.EqualError(t, err, fmt.Sprintf("client: (DELETE: %s/subjects/test/versions/2) failed with error code 500: internal server error", ts.URL))
+	assert.EqualError(t, err, fmt.Sprintf("client: (DELETE: %s/subjects/test/versions/2?permanent=false) failed with error code 500: internal server error", ts.URL))
 }
 
 func Test_DeleteSchemaVersion_with_an_invalid_response_format(t *testing.T) {
@@ -667,7 +667,7 @@ func Test_DeleteSchemaVersion_with_an_invalid_response_format(t *testing.T) {
 	client, err := NewClient(ts.URL)
 	require.NoError(t, err)
 
-	id, err := client.DeleteSchemaVersion(context.Background(), "test", 2)
+	id, err := client.DeleteSchemaVersion(context.Background(), "test", 2, false)
 
 	assert.Equal(t, -1, id)
 	assert.EqualError(t, err, "failed to decode the response: invalid character 'o' in literal null (expecting 'u')")
@@ -676,7 +676,7 @@ func Test_DeleteSchemaVersion_with_an_invalid_response_format(t *testing.T) {
 func Test_DeleteLatestSchemaVersion_success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "DELETE", r.Method)
-		assert.Equal(t, "/subjects/test/versions/latest", r.URL.String())
+		assert.Equal(t, "/subjects/test/versions/latest?permanent=true", r.URL.String())
 
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`4`))
@@ -687,7 +687,7 @@ func Test_DeleteLatestSchemaVersion_success(t *testing.T) {
 	client, err := NewClient(ts.URL)
 	require.NoError(t, err)
 
-	id, err := client.DeleteLatestSchemaVersion(context.Background(), "test")
+	id, err := client.DeleteLatestSchemaVersion(context.Background(), "test", true)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 4, id)

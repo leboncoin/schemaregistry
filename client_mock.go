@@ -41,8 +41,8 @@ func (c *ClientMock) Versions(ctx context.Context, subject string) (versions []i
 }
 
 // DeleteSubject method mock
-func (c *ClientMock) DeleteSubject(ctx context.Context, subject string) (versions []int, err error) {
-	args := c.Called(subject)
+func (c *ClientMock) DeleteSubject(ctx context.Context, subject string, permanent bool) (versions []int, err error) {
+	args := c.Called(subject, permanent)
 
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -103,15 +103,15 @@ func (c *ClientMock) GetConfig(ctx context.Context, subject string) (*Config, er
 }
 
 // DeleteSchemaVersion method mock
-func (c *ClientMock) DeleteSchemaVersion(ctx context.Context, subject string, version int) (int, error) {
-	args := c.Called(subject, version)
+func (c *ClientMock) DeleteSchemaVersion(ctx context.Context, subject string, version int, permanent bool) (int, error) {
+	args := c.Called(subject, version, permanent)
 
 	return args.Int(0), args.Error(1)
 }
 
 // DeleteLatestSchemaVersion method mock
-func (c *ClientMock) DeleteLatestSchemaVersion(ctx context.Context, subject string) (int, error) {
-	args := c.Called(subject)
+func (c *ClientMock) DeleteLatestSchemaVersion(ctx context.Context, subject string, permanent bool) (int, error) {
+	args := c.Called(subject, permanent)
 
 	return args.Int(0), args.Error(1)
 }

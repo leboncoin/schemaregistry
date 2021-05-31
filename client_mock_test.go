@@ -66,9 +66,9 @@ func Test_MockClient_Versions_with_error(t *testing.T) {
 func Test_MockClient_DeleteSubject(t *testing.T) {
 	mock := new(ClientMock)
 
-	mock.On("DeleteSubject", "some-subject").Return([]int{1, 2, 3}, nil)
+	mock.On("DeleteSubject", "some-subject", true).Return([]int{1, 2, 3}, nil)
 
-	versions, err := mock.DeleteSubject(context.Background(), "some-subject")
+	versions, err := mock.DeleteSubject(context.Background(), "some-subject", true)
 
 	assert.NoError(t, err)
 	assert.EqualValues(t, []int{1, 2, 3}, versions)
@@ -77,9 +77,9 @@ func Test_MockClient_DeleteSubject(t *testing.T) {
 func Test_MockClient_DeleteSubject_with_error(t *testing.T) {
 	mock := new(ClientMock)
 
-	mock.On("DeleteSubject", "some-subject").Return(nil, fmt.Errorf("some-error"))
+	mock.On("DeleteSubject", "some-subject", false).Return(nil, fmt.Errorf("some-error"))
 
-	versions, err := mock.DeleteSubject(context.Background(), "some-subject")
+	versions, err := mock.DeleteSubject(context.Background(), "some-subject", false)
 
 	assert.Nil(t, versions)
 	assert.EqualError(t, err, "some-error")
@@ -205,9 +205,9 @@ func Test_MockClient_GetConfig_with_error(t *testing.T) {
 func Test_MockClient_DeleteSchemaVersion(t *testing.T) {
 	mock := new(ClientMock)
 
-	mock.On("DeleteSchemaVersion", "some-subject", 3).Return(12, nil)
+	mock.On("DeleteSchemaVersion", "some-subject", 3, true).Return(12, nil)
 
-	id, err := mock.DeleteSchemaVersion(context.Background(), "some-subject", 3)
+	id, err := mock.DeleteSchemaVersion(context.Background(), "some-subject", 3, true)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 12, id)
@@ -216,9 +216,9 @@ func Test_MockClient_DeleteSchemaVersion(t *testing.T) {
 func Test_MockClient_DeleteLatestSchemaVersion(t *testing.T) {
 	mock := new(ClientMock)
 
-	mock.On("DeleteLatestSchemaVersion", "some-subject").Return(12, nil)
+	mock.On("DeleteLatestSchemaVersion", "some-subject", false).Return(12, nil)
 
-	id, err := mock.DeleteLatestSchemaVersion(context.Background(), "some-subject")
+	id, err := mock.DeleteLatestSchemaVersion(context.Background(), "some-subject", false)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 12, id)
