@@ -168,7 +168,7 @@ func (c *Client) IsRegistered(ctx context.Context, subject string, schema string
 
 	// nolint
 	// Error not possible here.
-	reqBody, _ := json.Marshal(&requestBody{Schema: schema})
+	reqBody, _ := json.Marshal(requestBody{Schema: schema})
 
 	rawBody, err := c.execRequest(ctx, "POST", fmt.Sprintf("subjects/%s", subject), bytes.NewReader(reqBody))
 	if IsSchemaNotFound(err) || IsSchemaNotFound(err) {
@@ -205,7 +205,7 @@ func (c *Client) RegisterNewSchema(ctx context.Context, subject string, avroSche
 
 	// nolint
 	// Error not possible here.
-	reqBody, _ := json.Marshal(&requestBody{Schema: avroSchema})
+	reqBody, _ := json.Marshal(requestBody{Schema: avroSchema})
 
 	rawBody, err := c.execRequest(ctx, "POST", fmt.Sprintf("subjects/%s/versions", subject), bytes.NewReader(reqBody))
 	if err != nil {
@@ -271,9 +271,28 @@ func (c *Client) GetConfig(ctx context.Context, subject string) (*Config, error)
 func (c *Client) SetGlobalConfig(ctx context.Context, config Config) (*Config, error) {
 	// nolint
 	// Error not possible here.
-	reqBody, _ := json.Marshal(&config)
+	reqBody, _ := json.Marshal(config)
 
 	rawBody, err := c.execRequest(ctx, "PUT", "config", bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+
+	var newConfig Config
+	err = json.Unmarshal(rawBody, &newConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode the response: %s", err)
+	}
+
+	return &newConfig, nil
+}
+
+func (c *Client) SetSubjectConfig(ctx context.Context, subject string, config Config) (*Config, error) {
+	// nolint
+	// Error not possible here.
+	reqBody, _ := json.Marshal(config)
+
+	rawBody, err := c.execRequest(ctx, "PUT", fmt.Sprintf("config/%s", subject), bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +363,7 @@ func (c *Client) SchemaCompatibleWith(ctx context.Context, schema string, subjec
 
 	// nolint
 	// Error not possible here.
-	reqBody, _ := json.Marshal(&requestBody{Schema: schema})
+	reqBody, _ := json.Marshal(requestBody{Schema: schema})
 
 	rawBody, err := c.execRequest(ctx, "POST", fmt.Sprintf("compatibility/subjects/%s/versions/%d", subject, version), bytes.NewReader(reqBody))
 	if err != nil {
