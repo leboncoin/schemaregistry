@@ -797,3 +797,49 @@ func Test_SetGlobalConfig_with_a_remote_error(t *testing.T) {
 	assert.Nil(t, config)
 	assert.EqualError(t, err, fmt.Sprintf("client: (PUT: %s/config) failed with error code 500: internal server error", ts.URL))
 }
+
+func Test_SetSubjectConfig_success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "PUT", r.Method)
+		assert.Equal(t, "/config/my-subject", r.URL.String())
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"compatibility": "BACKWARD"}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	config, err := client.SetSubjectConfig(context.Background(), "my-subject", Config{
+		Compatibility: "BACKWARD",
+	})
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, &Config{
+		Compatibility: "BACKWARD",
+	}, config)
+}
+
+func Test_SetSubjectConfig_remote_error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, err := w.Write([]byte(`{
+			"error_code": 500,
+			"message": "internal server error"
+		}`))
+		require.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(ts.URL)
+	require.NoError(t, err)
+
+	config, err := client.SetSubjectConfig(context.Background(), "my-subject", Config{
+		Compatibility: "BACKWARD",
+	})
+
+	assert.Nil(t, config)
+	assert.EqualError(t, err, fmt.Sprintf("client: (PUT: %s/config/my-subject) failed with error code 500: internal server error", ts.URL))
+}
